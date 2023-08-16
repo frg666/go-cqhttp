@@ -28,21 +28,34 @@ type Reconnect struct {
 
 // Account 账号配置
 type Account struct {
-	Uin              int64      `yaml:"uin"`
-	Password         string     `yaml:"password"`
-	Encrypt          bool       `yaml:"encrypt"`
-	Status           int        `yaml:"status"`
-	ReLogin          *Reconnect `yaml:"relogin"`
-	UseSSOAddress    bool       `yaml:"use-sso-address"`
-	AllowTempSession bool       `yaml:"allow-temp-session"`
-	SignServers      []string   `yaml:"sign-servers"`
-	MaxCheckCount    int        `yaml:"max-check-count"`
-	SignServerBearer string     `yaml:"sign-server-bearer"`
-	Key              string     `yaml:"key"`
-	IsBelow110       bool       `yaml:"is-below-110"`
-	AutoRegister     bool       `yaml:"auto-register"`
-	AutoRefreshToken bool       `yaml:"auto-refresh-token"`
-	RefreshInterval  int64      `yaml:"refresh-interval"`
+	Uin              int64             `yaml:"uin"`
+	Password         string            `yaml:"password"`
+	Encrypt          bool              `yaml:"encrypt"`
+	Status           int               `yaml:"status"`
+	ReLogin          *Reconnect        `yaml:"relogin"`
+	UseSSOAddress    bool              `yaml:"use-sso-address"`
+	AllowTempSession bool              `yaml:"allow-temp-session"`
+	QSignServer      *QSign            `yaml:"unidbg-fetch-qsign"`
+	Vivo50SignServer *Vivo50SignServer `yaml:"vivo50-sign-server"`
+}
+
+type QSign struct {
+	Enable           bool     `yaml:"enable"`
+	SignServers      []string `yaml:"sign-servers"`
+	MaxCheckCount    int      `yaml:"max-check-count"`
+	SignServerBearer string   `yaml:"sign-server-bearer"`
+	Key              string   `yaml:"key"`
+	IsBelow110       bool     `yaml:"is-below-110"`
+	AutoRegister     bool     `yaml:"auto-register"`
+	AutoRefreshToken bool     `yaml:"auto-refresh-token"`
+	RefreshInterval  int64    `yaml:"refresh-interval"`
+}
+
+type Vivo50SignServer struct {
+	Enable            bool   `yaml:"enable"`
+	KfcServer         string `yaml:"kfc-server"`
+	ServerIdentityKey string `yaml:"server-identity-key"`
+	AuthKey           string `yaml:"auth-key"`
 }
 
 // Config 总配置文件

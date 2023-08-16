@@ -38,7 +38,7 @@ func GetAvaliableSignServer() (string, error) {
 	if currentOK.Load() {
 		return currentSignServer, nil
 	}
-	maxCount := base.Account.MaxCheckCount
+	maxCount := base.Account.QSignServer.MaxCheckCount
 	signServers = base.SignServers
 	if maxCount == 0 && atomic.LoadInt64(&errorCount) > 3 {
 		currentSignServer = signServers[0]
@@ -259,7 +259,7 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 			break
 		}
 		i++
-		if (!base.IsBelow110) && base.Account.AutoRegister && err == nil && len(sign) == 0 {
+		if (!base.IsBelow110) && base.Account.QSignServer.AutoRegister && err == nil && len(sign) == 0 {
 			if registerLock.TryLock() { // 避免并发时多处同时销毁并重新注册
 				log.Warn("获取签名为空，实例可能丢失，正在尝试重新注册")
 				defer registerLock.Unlock()
@@ -272,7 +272,7 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 			}
 			continue
 		}
-		if (!base.IsBelow110) && base.Account.AutoRefreshToken && len(token) == 0 {
+		if (!base.IsBelow110) && base.Account.QSignServer.AutoRefreshToken && len(token) == 0 {
 			log.Warnf("token 已过期, 总丢失 token 次数为 %v", atomic.AddUint64(&missTokenCount, 1))
 			if registerLock.TryLock() {
 				defer registerLock.Unlock()

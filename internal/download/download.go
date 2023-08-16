@@ -137,6 +137,10 @@ func (r Request) body() (io.ReadCloser, error) {
 	return resp.Body, err
 }
 
+func (r Request) Response() (*http.Response, error) {
+	return r.do()
+}
+
 // Bytes 对给定URL发送请求，返回响应主体
 func (r Request) Bytes() ([]byte, error) {
 	rd, err := r.body()

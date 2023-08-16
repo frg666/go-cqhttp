@@ -92,10 +92,10 @@ func Init() {
 		ReportSelfMessage = conf.Message.ReportSelfMessage
 		UseSSOAddress = conf.Account.UseSSOAddress
 		AllowTempSession = conf.Account.AllowTempSession
-		SignServers = conf.Account.SignServers
-		SignServerBearer = conf.Account.SignServerBearer
-		Key = conf.Account.Key
-		IsBelow110 = conf.Account.IsBelow110
+		SignServers = conf.Account.QSignServer.SignServers
+		SignServerBearer = conf.Account.QSignServer.SignServerBearer
+		Key = conf.Account.QSignServer.Key
+		IsBelow110 = conf.Account.QSignServer.IsBelow110
 		HTTPTimeout = conf.Message.HTTPTimeout
 		SignServerTimeout = conf.Message.SignServerTimeout
 	}
