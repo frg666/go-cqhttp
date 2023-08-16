@@ -137,6 +137,7 @@ func (r Request) body() (io.ReadCloser, error) {
 	return resp.Body, err
 }
 
+// Response 获取请求的响应
 func (r Request) Response() (*http.Response, error) {
 	return r.do()
 }

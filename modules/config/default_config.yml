@@ -68,7 +68,7 @@ account: # 账号相关
   vivo50-sign-server:
     enable: false  # 是否启用，在 qsign 和 vivo50 都启用的情况下只会使用 qsign
     kfc-server: "http://localhost:8888"  # 默认签名服务地址
-    server-identity-key: "kfccrazytuesdayvme50"  # 默认id key
+    server-identity-key: "kfccrazytuesdayvme50"  # 默认identity key
     auth-key: "kfcvme50"  # 默认 auth-key
 
 heartbeat:

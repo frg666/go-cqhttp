@@ -164,7 +164,8 @@ func LoginInteract() {
 			log.Fatalf("加载设备信息失败: %v", err)
 		}
 	}
-	if base.Account.QSignServer.Enable {
+	switch {
+	case base.Account.QSignServer.Enable:
 		signServer, _ := GetAvaliableSignServer()
 		if signServer != "-" && signServer != "" {
 			log.Infof("使用服务器 %s 进行数据包签名", signServer)
@@ -190,7 +191,8 @@ func LoginInteract() {
 				log.Warn("签名服务器版本 <= 1.1.0 ，无法使用刷新 token 等操作，建议使用 1.1.6 版本及以上签名服务器")
 			}
 		}
-	} else if base.Account.Vivo50SignServer.Enable {
+
+	case base.Account.Vivo50SignServer.Enable:
 		if !strings.HasPrefix(cli.Device().Protocol.Version().SortVersionName, "8.9.58") {
 			log.Warn("vivo50 签名服务器仅支持 8.9.58 版本协议")
 			os.Exit(0)
@@ -199,7 +201,8 @@ func LoginInteract() {
 		go connectVivo50WebSocket()
 		wrapper.DandelionEnergy = vivo50Energy
 		wrapper.FekitGetSign = vivo50Sign
-	} else {
+
+	default:
 		log.Warnf("警告: 未配置签名服务器, 这可能会导致登录 45 错误码或发送消息被风控")
 	}
 

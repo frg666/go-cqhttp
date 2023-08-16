@@ -28,6 +28,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/Mrs4s/MiraiGo/utils"
+
 	"github.com/Mrs4s/go-cqhttp/internal/base"
 	"github.com/Mrs4s/go-cqhttp/internal/download"
 )
@@ -38,6 +39,7 @@ var authKey = "kfcvme50"                       // RPC 客户端验证密钥，�
 
 var vivo50Token = "" // 握手成功后返回的 token , 经过base64解码
 
+// Vivo50SecKeys 保存密钥信息
 type Vivo50SecKeys struct {
 	AESKey          []byte
 	PrivateKeyBytes []byte
@@ -251,12 +253,13 @@ func generateSecInfo() (aesKey []byte, rsaPrivateKey []byte, rsaPublicKey []byte
 	return aesKey, rsaPrivateKey, rsaPublicKey, err
 }
 
+// HandshakeRequest 握手请求
 type HandshakeRequest struct {
 	ClientRsa string `json:"clientRsa"`
 	Secret    string `json:"secret"`
 }
 
-// Secret struct
+// HandshakeInfo Secret 内容结构
 type HandshakeInfo struct {
 	AuthorizationKey string `json:"authorizationKey"`
 	SharedKey        string `json:"sharedKey"`
@@ -326,7 +329,10 @@ func handshake() bool {
 		return false
 	}
 	cipher, err := rsa.EncryptPKCS1v15(rand.Reader, pk, infoBytes)
-
+	if err != nil {
+		log.Errorf("rsa.EncryptPKCS1v15 error: %v", err)
+		return false
+	}
 	hr := HandshakeRequest{
 		ClientRsa: base64.StdEncoding.EncodeToString(rsaPub),
 		Secret:    base64.StdEncoding.EncodeToString(cipher),
@@ -378,7 +384,6 @@ func getHeader() map[string]string {
 	t, st, err := signTimestamp()
 	if err != nil {
 		log.Warnf("签名时间戳出错 %v", err)
-
 	}
 	headers["Authorization"] = vivo50Token
 	headers["X-SEC-time"] = t
@@ -396,11 +401,14 @@ func getSessionResponse(method string, action string) int {
 		URL:    url,
 	}.WithTimeout(time.Duration(base.SignServerTimeout) * time.Second)
 	r, e := req.Response()
+	code := r.StatusCode
+	_ = r.Body.Close()
 	if e != nil {
 		log.Warnf("请求 %v %v 出错: %v", method, url, e)
 		return -1
 	}
-	return r.StatusCode
+
+	return code
 }
 
 // checkSession 检查会话状态，204 正常
@@ -413,7 +421,7 @@ func closeVivo50Session() int {
 	return getSessionResponse(http.MethodDelete, "/service/rpc/session")
 }
 
-var aesCipherBlock cipher.Block = nil
+var aesCipherBlock cipher.Block
 
 func aesEncrypt(content []byte) ([]byte, error) {
 	if aesCipherBlock == nil {
@@ -468,7 +476,7 @@ func connectVivo50WebSocket() {
 		i++
 		if !handshake() {
 			log.Error("与 vivo50 签名服务器握手失败，正在重试，请确认服务可用")
-			time.Sleep(3)
+			time.Sleep(3 * time.Second)
 			if i == 3 {
 				log.Error("无法与签名服务器成功握手")
 				os.Exit(0)
@@ -482,7 +490,8 @@ func connectVivo50WebSocket() {
 	for k, v := range getHeader() {
 		headers.Add(k, v)
 	}
-	c, _, err := websocket.DefaultDialer.Dial(vivo50Server+"/service/rpc/session", headers)
+	c, r, err := websocket.DefaultDialer.Dial(vivo50Server+"/service/rpc/session", headers)
+	_ = r.Body.Close()
 	if err != nil {
 		log.Fatalf("连接 vivo50 ws 服务出错：%v", err)
 	}
@@ -517,19 +526,18 @@ func connectVivo50WebSocket() {
 				return
 			case "service.error":
 				log.Warnf("出现错误: %v", gjson.GetBytes(resp, "message").String())
-				break
+
 			case "rpc.initialize":
 				channels["init"] <- resp
-				break
+
 			case "rpc.service.send":
 				channels["send"] <- resp
-				break
+
 			case "rpc.sign":
 				channels["sign"] <- resp
-				break
+
 			case "rpc.tlv":
 				channels["tlv"] <- resp
-				break
 			}
 		}
 	}()
@@ -552,9 +560,9 @@ func connectVivo50WebSocket() {
 	}()
 }
 
-func vivo50InitSignService() error {
+func vivo50InitSignService() {
 	initPacket := Vivo50Packet{
-		PacketId:   "0",
+		PacketID:   "0",
 		PacketType: "service.initialize",
 		ExtArgs: ExtArgs{
 			KeyQimei36: cli.Device().QImei36,
@@ -573,7 +581,7 @@ func vivo50InitSignService() error {
 			Model:       string(cli.Device().Model),
 			Bootloader:  string(cli.Device().Bootloader),
 			Fingerprint: string(cli.Device().FingerPrint),
-			BootId:      string(cli.Device().BootId),
+			BootID:      string(cli.Device().BootId),
 			ProcVersion: string(cli.Device().ProcVersion),
 			BaseBand:    string(cli.Device().BaseBand),
 			Version: Vivo50Version{
@@ -588,19 +596,17 @@ func vivo50InitSignService() error {
 			WifiBSSID:  string(cli.Device().WifiBSSID),
 			WifiSSID:   string(cli.Device().WifiSSID),
 			ImsiMd5:    string(cli.Device().IMSIMd5),
-			Imei:       string(cli.Device().IMEI),
+			Imei:       cli.Device().IMEI,
 			Apn:        string(cli.Device().APN),
-			AndroidId:  string(cli.Device().AndroidId),
-			Guid:       string(cli.Device().Guid),
+			AndroidID:  string(cli.Device().AndroidId),
+			GUID:       string(cli.Device().Guid),
 		},
 	}
 	sendWSMessage(&initPacket)
 	resp := <-channels["init"]
 	if gjson.GetBytes(resp, "packetType").String() == "rpc.initialize" {
 		log.Info(" vivo50 签名服务成初始化功")
-		return nil
 	}
-	return errors.New("unknow error")
 }
 
 // sendWSMessage 向 vivo50 签名服务器发送 ws 数据
@@ -610,12 +616,15 @@ func sendWSMessage(packet *Vivo50Packet) {
 	if e != nil {
 		log.Warnf("aes encrypt error: %v", e)
 	}
-	vivo50WSConnect.WriteMessage(websocket.BinaryMessage, d)
+	e = vivo50WSConnect.WriteMessage(websocket.BinaryMessage, d)
+	if e != nil {
+		log.Warnf("vivo50: send ws msg error: %v", e)
+	}
 }
 
 // sendPacket 接收到 rpc.service.send 后发送返回包
 func sendPacket(resp []byte) {
-	packetId := gjson.GetBytes(resp, "packetId").String()
+	packetID := gjson.GetBytes(resp, "packetId").String()
 	cmd := gjson.GetBytes(resp, "command").String()
 	data, _ := hex.DecodeString(gjson.GetBytes(resp, "data").String())
 	r, e := cli.SendSsoPacket(cmd, data)
@@ -624,7 +633,7 @@ func sendPacket(resp []byte) {
 		return
 	}
 	pac := Vivo50Packet{
-		PacketId:   packetId,
+		PacketID:   packetID,
 		PacketType: "rpc.service.send",
 		Command:    cmd,
 		Data:       hex.EncodeToString(r),
@@ -632,15 +641,20 @@ func sendPacket(resp []byte) {
 	sendWSMessage(&pac)
 }
 
-func vivo50Energy(uin uint64, id string, _ string, salt []byte) ([]byte, error) {
+func vivo50Energy(_ uint64, id string, _ string, _ []byte) ([]byte, error) {
+	if code := checkVivo50Session(); code != 204 {
+		log.Warnf("vivo50 session error: %v", code)
+		_ = vivo50WSConnect.Close()
+		return nil, errors.New("session error")
+	}
 	pac := Vivo50Packet{
-		PacketId:   strconv.FormatInt(time.Now().UnixMilli(), 10),
+		PacketID:   strconv.FormatInt(time.Now().UnixMilli(), 10),
 		PacketType: "rpc.tlv",
 		TlvType:    0x544,
 		ExtArgs: ExtArgs{
 			KeyCommandStr: "810_a",
 		},
-		Content: hex.EncodeToString(salt),
+		Content: id,
 	}
 	sendWSMessage(&pac)
 	resp := <-channels["tlv"]
@@ -656,11 +670,15 @@ func vivo50Energy(uin uint64, id string, _ string, salt []byte) ([]byte, error) 
 	return data, nil
 }
 
-func vivo50Sign(seq uint64, uin string, cmd string, qua string, buff []byte) (
+func vivo50Sign(seq uint64, _ string, cmd string, _ string, buff []byte) (
 	sign []byte, extra []byte, token []byte, err error) {
-
+	if code := checkVivo50Session(); code != 204 {
+		log.Warnf("vivo50 session error: %v", code)
+		_ = vivo50WSConnect.Close()
+		return nil, nil, nil, errors.New("session error")
+	}
 	pac := Vivo50Packet{
-		PacketId:   strconv.FormatInt(time.Now().UnixMilli(), 10),
+		PacketID:   strconv.FormatInt(time.Now().UnixMilli(), 10),
 		PacketType: "rpc.sign",
 		SeqID:      seq,
 		Command:    cmd,
@@ -676,14 +694,9 @@ func vivo50Sign(seq uint64, uin string, cmd string, qua string, buff []byte) (
 	return sign, extra, token, nil
 }
 
-type SignResult struct {
-	Sign  string `json:"sign"`
-	Extra string `json:"extra"`
-	Token string `json:"token"`
-}
-
+// Vivo50Packet ws 请求包
 type Vivo50Packet struct {
-	PacketId   string `json:"packetId"`
+	PacketID   string `json:"packetId"`
 	PacketType string `json:"packetType"`
 
 	Message string  `json:"message"`
@@ -699,20 +712,24 @@ type Vivo50Packet struct {
 	Device Vivo50Device `json:"device"`
 }
 
+// ExtArgs extArgs 结构
 type ExtArgs struct {
 	KeyQimei36    string      `json:"KEY_QIMEI36"`
 	BotProtocol   BotProtocol `json:"BOT_PROTOCOL"`
 	KeyCommandStr string      `json:"KEY_COMMAND_STR"`
 }
 
+// BotProtocol Bot 协议信息
 type BotProtocol struct {
 	ProtocolValue ProtocolValue `json:"protocolValue"`
 }
 
+// ProtocolValue 协议值 8.9.58
 type ProtocolValue struct {
 	Ver string `json:"ver"`
 }
 
+// Vivo50Device 设备信息
 type Vivo50Device struct {
 	Display     string        `json:"display"`
 	Product     string        `json:"product"`
@@ -722,7 +739,7 @@ type Vivo50Device struct {
 	Model       string        `json:"model"`
 	Bootloader  string        `json:"bootloader"`
 	Fingerprint string        `json:"fingerprint"`
-	BootId      string        `json:"bootId"`
+	BootID      string        `json:"bootId"`
 	ProcVersion string        `json:"procVersion"`
 	BaseBand    string        `json:"baseBand"`
 	Version     Vivo50Version `json:"version"`
@@ -734,10 +751,11 @@ type Vivo50Device struct {
 	ImsiMd5     string        `json:"imsiMd5"`
 	Imei        string        `json:"imei"`
 	Apn         string        `json:"apn"`
-	AndroidId   string        `json:"androidId"`
-	Guid        string        `json:"guid"`
+	AndroidID   string        `json:"androidId"`
+	GUID        string        `json:"guid"`
 }
 
+// Vivo50Version 版本信息
 type Vivo50Version struct {
 	Incremental string `json:"incremental"`
 	Release     string `json:"release"`

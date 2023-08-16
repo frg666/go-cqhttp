@@ -39,6 +39,7 @@ type Account struct {
 	Vivo50SignServer *Vivo50SignServer `yaml:"vivo50-sign-server"`
 }
 
+// QSign 配置
 type QSign struct {
 	Enable           bool     `yaml:"enable"`
 	SignServers      []string `yaml:"sign-servers"`
@@ -51,6 +52,7 @@ type QSign struct {
 	RefreshInterval  int64    `yaml:"refresh-interval"`
 }
 
+// Vivo50SignServer 配置
 type Vivo50SignServer struct {
 	Enable            bool   `yaml:"enable"`
 	KfcServer         string `yaml:"kfc-server"`
