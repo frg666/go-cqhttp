@@ -164,6 +164,8 @@ func LoginInteract() {
 			log.Fatalf("加载设备信息失败: %v", err)
 		}
 	}
+	cli = newClient()
+	cli.UseDevice(device)
 	switch {
 	case base.Account.QSignServer.Enable:
 		signServer, _ := GetAvaliableSignServer()
@@ -195,10 +197,9 @@ func LoginInteract() {
 	case base.Account.Vivo50SignServer.Enable:
 		if !strings.HasPrefix(cli.Device().Protocol.Version().SortVersionName, "8.9.58") {
 			log.Warn("vivo50 签名服务器仅支持 8.9.58 版本协议")
-			os.Exit(0)
 		}
 		initVivo50Config()
-		go connectVivo50WebSocket()
+		connectVivo50WebSocket()
 		wrapper.DandelionEnergy = vivo50Energy
 		wrapper.FekitGetSign = vivo50Sign
 
@@ -261,8 +262,7 @@ func LoginInteract() {
 	}
 	log.Info("开始尝试登录并同步消息...")
 	log.Infof("使用协议: %s", device.Protocol.Version())
-	cli = newClient()
-	cli.UseDevice(device)
+
 	isQRCodeLogin := (base.Account.Uin == 0 || len(base.Account.Password) == 0) && !base.Account.Encrypt
 	isTokenLogin := false
 

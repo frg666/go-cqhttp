@@ -54,9 +54,9 @@ var vivo50SecKeys Vivo50SecKeys
 func initVivo50Config() {
 	if base.Account.Vivo50SignServer == nil {
 		log.Warn(`缺少 vivo50 签名服务配置，使用默认配置
-	vivo50Server = "http://localhost:8888"      
-	serverIdentityKey = "kfccrazythusdayvivo50" 
-	authKey = "kfc"  
+vivo50Server = "http://localhost:8888"      
+serverIdentityKey = "kfccrazythusdayvivo50" 
+authKey = "kfc"  
 		`)
 		return
 	}
@@ -74,9 +74,9 @@ func initVivo50Config() {
 	}
 	vivo50Server = strings.TrimSuffix(vivo50Server, "/")
 	log.Infof(`vivo50 签名服务配置
-	vivo50Server = %v     
-	serverIdentityKey = "%v" 
-	authKey = "%v"  
+vivo50Server = %v     
+serverIdentityKey = "%v" 
+authKey = "%v"  
 		`, vivo50Server, serverIdentityKey, authKey)
 }
 
@@ -475,7 +475,7 @@ func connectVivo50WebSocket() {
 	for {
 		i++
 		if !handshake() {
-			log.Error("与 vivo50 签名服务器握手失败，正在重试，请确认服务可用")
+			log.Warn("与 vivo50 签名服务器握手失败，正在重试，请确认服务可用")
 			time.Sleep(3 * time.Second)
 			if i == 3 {
 				log.Error("无法与签名服务器成功握手")
