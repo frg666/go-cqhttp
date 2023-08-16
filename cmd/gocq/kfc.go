@@ -152,7 +152,7 @@ func loadSecInfo(aesFile string, rsaPrivateFile string, rsaPublicFile string) (
 		log.Warn("解析密钥出错")
 		return nil, nil, nil, errors.New("parse rsa key failed")
 	}
-	if !priK.PublicKey.Equal(*pubK) {
+	if !priK.PublicKey.Equal(pubK) {
 		log.Warn("读取到不匹配的 RSA 密钥，将重新生成")
 		return nil, nil, nil, err
 	}
@@ -266,12 +266,11 @@ type HandshakeInfo struct {
 	Botid            int64  `json:"botid"`
 }
 
-func parsePublicKey(publicKeyPEM string) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode([]byte(publicKeyPEM))
+func parsePublicKey(publicKeyString string) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode([]byte(publicKeyString))
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
 	}
-
 	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
 		return nil, err
@@ -311,7 +310,7 @@ func handshake() bool {
 
 	handshakeInfo := HandshakeInfo{
 		AuthorizationKey: authKey,
-		SharedKey:        hex.EncodeToString(aesKey),
+		SharedKey:        string(aesKey),
 		Botid:            cli.Uin,
 	}
 
@@ -323,19 +322,25 @@ func handshake() bool {
 	}
 
 	// 使用最初服务端返回的公钥加密握手信息
-	pk, err := parsePublicKey(publicKey)
-	if err != nil {
-		log.Errorf("parse public key failed: %v. publicKey is\n%v", err, pk)
+	publicKey = "-----BEGIN PUBLIC KEY-----\n" + publicKey + "\n-----END PUBLIC KEY-----"
+	block, _ := pem.Decode([]byte(publicKey))
+	if block == nil {
+		log.Warn("failed to decode PEM block")
 		return false
 	}
-	cipher, err := rsa.EncryptPKCS1v15(rand.Reader, pk, infoBytes)
+	pk, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		log.Errorf("parse publicKey failed: %v. publicKey is\n%v", err, publicKey)
+		return false
+	}
+	cipher, err := rsa.EncryptPKCS1v15(rand.Reader, pk.(*rsa.PublicKey), infoBytes)
 	if err != nil {
 		log.Errorf("rsa.EncryptPKCS1v15 error: %v", err)
 		return false
 	}
 	hr := HandshakeRequest{
 		ClientRsa: base64.StdEncoding.EncodeToString(rsaPub),
-		Secret:    base64.StdEncoding.EncodeToString(cipher),
+		Secret:    hex.EncodeToString(cipher),
 	}
 	body, err := json.Marshal(hr)
 	if err != nil {
