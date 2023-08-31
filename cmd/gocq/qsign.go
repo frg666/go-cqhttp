@@ -76,7 +76,7 @@ func getAvaliableSignServer() (*config.SignServer, error) {
 		return cs, nil
 	}
 	if len(base.SignServers) == 0 {
-		return nil, errors.New("no sign server configured")
+		return nil, errors.New("no sign server was configured")
 	}
 	maxCount := base.Account.MaxCheckCount
 	if maxCount == 0 {
@@ -93,9 +93,12 @@ func getAvaliableSignServer() (*config.SignServer, error) {
 	}
 	if checkMutex.TryLock() { // 保证同时只执行一个检查，不确定不加锁会不会有别的什么问题，还是加一个（
 		defer checkMutex.Unlock()
+		if base.Account.SyncCheckServers {
+			return syncCheckServer(base.SignServers)
+		}
 		return asyncCheckServer(base.SignServers)
 	}
-	return &config.SignServer{}, errors.New("it is checking sign servers")
+	return &config.SignServer{}, errors.New("checking sign servers")
 }
 
 func isServerAvaliable(signServer string) bool {
@@ -110,37 +113,68 @@ func isServerAvaliable(signServer string) bool {
 	return false
 }
 
-// 检查所有签名服务器直到找到可用的
-func asyncCheckServer(servers []config.SignServer) (*config.SignServer, error) {
-	setServer := sync.Once{}
-	wg := sync.WaitGroup{}
-	wg.Add(len(servers))
-	for i, s := range servers {
-		log.Infof("检查签名服务器：%v  (%v/%v)", s.URL, i+1, len(servers))
-		go func(server config.SignServer) {
-			defer wg.Done()
-			if len(server.URL) < 4 {
-				return
+// syncCheckServer 按同步顺序检查所有签名服务器直到找到可用的
+func syncCheckServer(servers []config.SignServer) (*config.SignServer, error) {
+	for i, server := range servers {
+		log.Infof("检查签名服务器：%v  (%v/%v)", server.URL, i+1, len(servers))
+		if len(server.URL) < 4 {
+			continue // 无效url
+		}
+		if isServerAvaliable(server.URL) {
+			errn.toZero()
+			usingServer.set(&servers[i], true)
+			log.Infof("使用签名服务器 url=%v, key=%v, auth=%v", server.URL, server.Key, server.Authorization)
+			if base.Account.AutoRegister {
+				// 若配置了自动注册实例则在切换后注册实例，否则不需要注册，签名时由qsign自动注册
+				signRegister(base.Account.Uin, device.AndroidId, device.Guid, device.QImei36, server.Key)
 			}
-			if isServerAvaliable(server.URL) {
-				setServer.Do(func() {
-					errn.toZero() // 计数归零
-					usingServer.set(&server, true)
-					log.Infof("使用签名服务器 url=%v, key=%v, auth=%v", server.URL, server.Key, server.Authorization)
-					if base.Account.AutoRegister {
-						// 若配置了自动注册实例则在切换后注册实例，否则不需要注册，签名时由qsign自动注册
-						signRegister(base.Account.Uin, device.AndroidId, device.Guid, device.QImei36, server.Key)
-					}
-				})
-			}
-		}(s)
-	}
-	wg.Wait()
-	s, ok := usingServer.get()
-	if ok {
-		return s, nil
+			return &servers[i], nil
+		}
 	}
 	return &config.SignServer{}, errors.New("no avaliable sign server")
+}
+
+// asyncCheckServer 异步检查所有签名服务器直到找到可用的
+func asyncCheckServer(servers []config.SignServer) (*config.SignServer, error) {
+	avaliableServer := make(chan *config.SignServer)
+	allDone := make(chan struct{})   // 是否全部完成
+	var finishedCount atomic.Uintptr // 记录完成任务数
+	finishedCount.Store(0)
+	log.Infof("正在检查各签名服务是否可用... （最多等待 %vs）", base.SignServerTimeout)
+	for i, server := range servers {
+		go func(idx int, s config.SignServer) {
+			defer func(count uintptr) {
+				if len(servers) == int(count) { // 已经全部检查完毕
+					allDone <- struct{}{}
+				}
+			}(finishedCount.Add(1)) // 完成任务数 + 1
+
+			if len(s.URL) < 4 {
+				return
+			}
+			if s.URL != servers[0].URL { // 主服务器优先 3s 检查
+				time.Sleep(3 * time.Second)
+			}
+			if isServerAvaliable(s.URL) {
+				errn.toZero() // 连续计数归零
+				avaliableServer <- &servers[idx]
+				log.Infof("使用签名服务器 url=%v, key=%v, auth=%v", s.URL, s.Key, s.Authorization)
+			}
+		}(i, server)
+	}
+	select {
+	case res := <-avaliableServer:
+		usingServer.set(res, true)
+		if base.Account.AutoRegister {
+			signRegister(base.Account.Uin, device.AndroidId, device.Guid, device.QImei36, res.Key)
+		}
+		return res, nil
+	case <-time.After(time.Duration(base.SignServerTimeout) * time.Second):
+		errMsg := fmt.Sprintf("no avaliable sign-server, timeout=%v", base.SignServerTimeout)
+		return &config.SignServer{}, errors.New(errMsg)
+	case <-allDone:
+		return &config.SignServer{}, errors.New("no avaliable sign-server")
+	}
 }
 
 /*
@@ -207,7 +241,7 @@ func energy(uin uint64, id string, _ string, salt []byte) ([]byte, error) {
 // 提交回调 buffer
 func signSubmit(uin string, cmd string, callbackID int64, buffer []byte, t string) {
 	buffStr := hex.EncodeToString(buffer)
-	tail := 64
+	tail := 32
 	endl := "..."
 	if len(buffStr) < tail {
 		tail = len(buffStr)
@@ -251,6 +285,7 @@ func signRequset(seq uint64, uin string, cmd string, qua string, buff []byte) (s
 		bytes.NewReader([]byte(fmt.Sprintf("uin=%v&qua=%s&cmd=%s&seq=%v&buffer=%v&android_id=%v&guid=%v",
 			uin, qua, cmd, seq, hex.EncodeToString(buff), utils.B2S(device.AndroidId), hex.EncodeToString(device.Guid)))),
 	)
+	log.Debugf("cmd=%v, qua=%v", cmd, qua)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -317,6 +352,9 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 		sign, extra, token, err = signRequset(seq, uin, cmd, qua, buff)
 		if err != nil {
 			log.Warnf("获取sso sign时出现错误: %v. server: %v", err, cs.URL)
+			log.Debugf("请求签名：cmd=%v, qua=%v, buff=%v", seq, cmd, hex.EncodeToString(buff))
+			log.Debugf("返回结果：sign=%v, extra=%v, token=%v",
+				hex.EncodeToString(sign), hex.EncodeToString(extra), hex.EncodeToString(token))
 		}
 		if i > 0 {
 			break
@@ -324,14 +362,11 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 		i++
 		if (!base.IsBelow110) && base.Account.AutoRegister && err == nil && len(sign) == 0 {
 			if registerLock.TryLock() { // 避免并发时多处同时销毁并重新注册
-				log.Debugf("请求签名：cmd=%v, qua=%v, buff=%v", seq, cmd, hex.EncodeToString(buff))
-				log.Debugf("返回结果：sign=%v, extra=%v, token=%v",
-					hex.EncodeToString(sign), hex.EncodeToString(extra), hex.EncodeToString(token))
 				log.Warn("获取签名为空，实例可能丢失，正在尝试重新注册")
 				defer registerLock.Unlock()
 				err := signServerDestroy(uin)
 				if err != nil {
-					log.Warnln(err) // 实例真的丢失时则必出错, 不 return , 以重新获取本次签名
+					log.Warnln(err)
 				}
 				signRegister(base.Account.Uin, device.AndroidId, device.Guid, device.QImei36, cs.Key)
 			}
@@ -342,7 +377,7 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 			if registerLock.TryLock() {
 				defer registerLock.Unlock()
 				if err := signRefreshToken(uin); err != nil {
-					log.Warnf("刷新 token 出现错误: %v. server: %v", err, cs.URL)
+					log.Warnf("刷新 token 时出现错误: %v. server: %v", err, cs.URL)
 				} else {
 					log.Info("刷新 token 成功")
 				}

@@ -168,7 +168,6 @@ func LoginInteract() {
 		log.Warn(err)
 	}
 	if len(signServer.URL) > 1 {
-		log.Infof("使用签名服务器：%v", signServer.URL)
 		go signStartRefreshToken(base.Account.RefreshInterval) // 定时刷新 token
 		wrapper.DandelionEnergy = energy
 		wrapper.FekitGetSign = sign

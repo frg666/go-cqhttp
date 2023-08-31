@@ -36,6 +36,7 @@ type Account struct {
 	UseSSOAddress        bool         `yaml:"use-sso-address"`
 	AllowTempSession     bool         `yaml:"allow-temp-session"`
 	SignServers          []SignServer `yaml:"sign-servers"`
+	SyncCheckServers     bool         `yaml:"sync-check-servers"`
 	RuleChangeSignServer int          `yaml:"rule-change-sign-server"`
 	MaxCheckCount        uint         `yaml:"max-check-count"`
 	SignServerTimeout    uint         `yaml:"sign-server-timeout"`
