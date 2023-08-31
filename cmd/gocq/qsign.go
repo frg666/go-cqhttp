@@ -192,7 +192,8 @@ func energy(uin uint64, id string, _ string, salt []byte) ([]byte, error) {
 	}
 	data, err := hex.DecodeString(gjson.GetBytes(response, "data").String())
 	if err != nil {
-		log.Warnf("获取T544 sign时出现错误: %v", err)
+		log.Warnf("获取T544 sign时出现错误: %v. (response data: %v)",
+			err, gjson.GetBytes(response, "data").String())
 		return nil, err
 	}
 	if len(data) == 0 {
@@ -234,7 +235,7 @@ func signCallback(uin string, results []gjson.Result, t string) {
 		body, _ := hex.DecodeString(result.Get("body").String())
 		ret, err := cli.SendSsoPacket(cmd, body)
 		if err != nil || len(ret) == 0 {
-			log.Warnf("Callback error: %v, Or response data is empty", err)
+			log.Warnf("callback error: %v, or response data is empty", err)
 			continue // 发送 SsoPacket 出错或返回数据为空时跳过
 		}
 		signSubmit(uin, cmd, callbackID, ret, t)
@@ -330,8 +331,7 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 				defer registerLock.Unlock()
 				err := signServerDestroy(uin)
 				if err != nil {
-					log.Warnln(err) // 实例真的丢失时则必出错，或许应该不 return , 以重新获取本次签名
-					// return nil, nil, nil, err
+					log.Warnln(err) // 实例真的丢失时则必出错, 不 return , 以重新获取本次签名
 				}
 				signRegister(base.Account.Uin, device.AndroidId, device.Guid, device.QImei36, cs.Key)
 			}
@@ -352,7 +352,7 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 		break
 	}
 	if tokenString := hex.EncodeToString(token); lastToken != tokenString {
-		log.Infof("token 已更新：%v -> %v", lastToken, tokenString)
+		log.Infof("token 变动：%v -> %v", lastToken, tokenString)
 		lastToken = tokenString
 	}
 	rule := base.Account.RuleChangeSignServer
