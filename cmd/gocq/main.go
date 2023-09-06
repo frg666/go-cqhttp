@@ -300,9 +300,9 @@ func LoginInteract() {
 		cli.Uin = base.Account.Uin
 		cli.PasswordMd5 = base.PasswordHash
 	}
-	download.SetTimeout(time.Duration(base.HTTPTimeout) * time.Second)
 	if !base.FastStart {
 		log.Infof("正在检查协议更新...")
+		download.SetTimeout(5 * time.Second) // 防止协议更新堵塞过久
 		currentVersionName := device.Protocol.Version().SortVersionName
 		remoteVersion, err := getRemoteLatestProtocolVersion(int(device.Protocol.Version().Protocol))
 		if err == nil {
@@ -387,6 +387,7 @@ func LoginInteract() {
 	})
 	saveToken()
 	cli.AllowSlider = true
+	download.SetTimeout(time.Duration(base.HTTPTimeout) * time.Second)
 	log.Infof("登录成功 欢迎使用: %v", cli.Nickname)
 	log.Info("开始加载好友列表...")
 	global.Check(cli.ReloadFriendList(), true)
