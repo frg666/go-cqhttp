@@ -34,7 +34,7 @@ account: # 账号相关
   sign-servers: 
     - url: '-'  # 主签名服务器地址， 必填
       key: '114514'  # 签名服务器所需要的apikey, 如果签名服务器的版本在1.1.0及以下则此项无效
-      authorization: '-'   # authorization 内容, 依服务端设置，如 'Bearer xxxx'
+      authorization: '-'   #（可选）请求 headers 中授权(Authorization)内容, 依服务端设置，如 'Bearer xxxx'
     - url: '-'  # 备用
       key: '114514'  
       authorization: '-' 

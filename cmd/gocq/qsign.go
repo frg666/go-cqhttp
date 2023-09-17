@@ -33,6 +33,9 @@ type currentSignServer struct {
 func (c *currentSignServer) get() (server *config.SignServer, status bool) {
 	c.muRW.RLock()
 	defer c.muRW.RUnlock()
+	if len(base.SignServers) == 1 { // 只有一个时直接返回，当做可用
+		return &base.SignServers[0], true
+	}
 	if c.server == nil {
 		c.server = &config.SignServer{}
 	}
