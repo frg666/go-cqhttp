@@ -28,13 +28,18 @@ type Reconnect struct {
 
 // Account 账号配置
 type Account struct {
-	Uin                  int64        `yaml:"uin"`
-	Password             string       `yaml:"password"`
-	Encrypt              bool         `yaml:"encrypt"`
-	Status               int          `yaml:"status"`
-	ReLogin              *Reconnect   `yaml:"relogin"`
-	UseSSOAddress        bool         `yaml:"use-sso-address"`
-	AllowTempSession     bool         `yaml:"allow-temp-session"`
+	Uin              int64      `yaml:"uin"`
+	Password         string     `yaml:"password"`
+	Encrypt          bool       `yaml:"encrypt"`
+	Status           int        `yaml:"status"`
+	ReLogin          *Reconnect `yaml:"relogin"`
+	UseSSOAddress    bool       `yaml:"use-sso-address"`
+	AllowTempSession bool       `yaml:"allow-temp-session"`
+}
+
+// QsignConfig qsign配置
+type QsignConfig struct {
+	Enable               bool         `yaml:"enable"`
 	SignServers          []SignServer `yaml:"sign-servers"`
 	SyncCheckServers     bool         `yaml:"sync-check-servers"`
 	RuleChangeSignServer int          `yaml:"rule-change-sign-server"`
@@ -53,9 +58,19 @@ type SignServer struct {
 	Authorization string `yaml:"authorization"`
 }
 
+// SignFakerConfig 配置
+type SignFakerConfig struct {
+	Enable        bool   `yaml:"enable"`
+	URL           string `yaml:"url"`
+	Authorization string `yaml:"authorization"`
+	Timeout       int    `yaml:"timeout"`
+}
+
 // Config 总配置文件
 type Config struct {
-	Account   *Account `yaml:"account"`
+	Account   *Account         `yaml:"account"`
+	QSign     *QsignConfig     `yaml:"qsign"`
+	SignFaker *SignFakerConfig `yaml:"sign-faker"`
 	Heartbeat struct {
 		Disabled bool `yaml:"disabled"`
 		Interval int  `yaml:"interval"`

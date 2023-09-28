@@ -23,35 +23,34 @@ var (
 
 // config file flags
 var (
-	Debug               bool                // 是否开启 debug 模式
-	RemoveReplyAt       bool                // 是否删除reply后的at
-	ExtraReplyData      bool                // 是否上报额外reply信息
-	IgnoreInvalidCQCode bool                // 是否忽略无效CQ码
-	SplitURL            bool                // 是否分割URL
-	ForceFragmented     bool                // 是否启用强制分片
-	SkipMimeScan        bool                // 是否跳过Mime扫描
-	ConvertWebpImage    bool                // 是否转换Webp图片
-	ReportSelfMessage   bool                // 是否上报自身消息
-	UseSSOAddress       bool                // 是否使用服务器下发的新地址进行重连
-	LogForceNew         bool                // 是否在每次启动时强制创建全新的文件储存日志
-	LogColorful         bool                // 是否启用日志颜色
-	FastStart           bool                // 是否为快速启动
-	AllowTempSession    bool                // 是否允许发送临时会话信息
-	UpdateProtocol      bool                // 是否更新协议
-	SignServers         []config.SignServer // 使用特定的服务器进行签名
-	IsBelow110          bool                // 签名服务器版本是否低于1.1.0及以下
-	HTTPTimeout         int                 // download 超时时间
-	SignServerTimeout   int                 // 签名服务器超时时间
+	Debug               bool // 是否开启 debug 模式
+	RemoveReplyAt       bool // 是否删除reply后的at
+	ExtraReplyData      bool // 是否上报额外reply信息
+	IgnoreInvalidCQCode bool // 是否忽略无效CQ码
+	SplitURL            bool // 是否分割URL
+	ForceFragmented     bool // 是否启用强制分片
+	SkipMimeScan        bool // 是否跳过Mime扫描
+	ConvertWebpImage    bool // 是否转换Webp图片
+	ReportSelfMessage   bool // 是否上报自身消息
+	UseSSOAddress       bool // 是否使用服务器下发的新地址进行重连
+	LogForceNew         bool // 是否在每次启动时强制创建全新的文件储存日志
+	LogColorful         bool // 是否启用日志颜色
+	FastStart           bool // 是否为快速启动
+	AllowTempSession    bool // 是否允许发送临时会话信息
+	UpdateProtocol      bool // 是否更新协议
+	HTTPTimeout         int  // download 超时时间
 
-	PostFormat        string                 // 上报格式 string or array
-	Proxy             string                 // 存储 proxy_rewrite,用于设置代理
-	PasswordHash      [16]byte               // 存储QQ密码哈希供登录使用
-	AccountToken      []byte                 // 存储 AccountToken 供登录使用
-	Account           *config.Account        // 账户配置
-	Reconnect         *config.Reconnect      // 重连配置
-	LogLevel          string                 // 日志等级
-	LogAging          = time.Hour * 24 * 365 // 日志时效
-	HeartbeatInterval = time.Second * 5      // 心跳间隔
+	PostFormat        string                  // 上报格式 string or array
+	Proxy             string                  // 存储 proxy_rewrite,用于设置代理
+	PasswordHash      [16]byte                // 存储QQ密码哈希供登录使用
+	AccountToken      []byte                  // 存储 AccountToken 供登录使用
+	Account           *config.Account         // 账户配置
+	QSign             *config.QsignConfig     // qsign配置
+	SignFaker         *config.SignFakerConfig // signfaker 配置
+	Reconnect         *config.Reconnect       // 重连配置
+	LogLevel          string                  // 日志等级
+	LogAging          = time.Hour * 24 * 365  // 日志时效
+	HeartbeatInterval = time.Second * 5       // 心跳间隔
 
 	Servers  []map[string]yaml.Node // 连接服务列表
 	Database map[string]yaml.Node   // 数据库列表
@@ -90,14 +89,13 @@ func Init() {
 		ReportSelfMessage = conf.Message.ReportSelfMessage
 		UseSSOAddress = conf.Account.UseSSOAddress
 		AllowTempSession = conf.Account.AllowTempSession
-		SignServers = conf.Account.SignServers
-		IsBelow110 = conf.Account.IsBelow110
 		HTTPTimeout = conf.Message.HTTPTimeout
-		SignServerTimeout = int(conf.Account.SignServerTimeout)
 	}
 	{ // others
 		Proxy = conf.Message.ProxyRewrite
 		Account = conf.Account
+		QSign = conf.QSign
+		SignFaker = conf.SignFaker
 		Reconnect = conf.Account.ReLogin
 		Servers = conf.Servers
 		Database = conf.Database
