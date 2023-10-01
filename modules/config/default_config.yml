@@ -15,6 +15,10 @@ account: # 账号相关
   use-sso-address: true
   # 是否允许发送临时会话消息
   allow-temp-session: false
+  # 指定qq协议版本文件夹路径或url, 仅支持路径或http(s) url
+  # 示例：data/versions, C:\data\versions, https://xxx.com/6.json
+  # 为空时使用 data/versions
+  protocol-version: ''
 
 # qsign 配置
 qsign:

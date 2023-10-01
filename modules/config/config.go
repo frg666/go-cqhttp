@@ -35,6 +35,7 @@ type Account struct {
 	ReLogin          *Reconnect `yaml:"relogin"`
 	UseSSOAddress    bool       `yaml:"use-sso-address"`
 	AllowTempSession bool       `yaml:"allow-temp-session"`
+	ProtocolVersion  string     `yaml:"protocol-version"`
 }
 
 // QsignConfig qsign配置

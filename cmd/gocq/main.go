@@ -266,15 +266,8 @@ func LoginInteract() {
 		os.Exit(0)
 	}
 
-	// 加载本地版本信息, 一般是在上次登录时保存的
-	versionFile := path.Join(global.VersionsPath, fmt.Sprint(int(cli.Device().Protocol))+".json")
-	if global.PathExists(versionFile) {
-		b, err := os.ReadFile(versionFile)
-		if err == nil {
-			_ = cli.Device().Protocol.Version().UpdateFromJson(b)
-		}
-		log.Infof("从文件 %s 读取协议版本 %v.", versionFile, cli.Device().Protocol.Version())
-	}
+	// 加载协议版本信息
+	loadProtocolVersion(base.Account.ProtocolVersion)
 
 	saveToken := func() {
 		base.AccountToken = cli.GenToken()

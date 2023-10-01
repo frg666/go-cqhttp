@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -259,4 +260,29 @@ func fetchCaptcha(id string) string {
 		return g.Get("ticket").String()
 	}
 	return ""
+}
+
+func loadProtocolVersion(versionFile string) {
+	if strings.HasPrefix(versionFile, "http") {
+		b, err := download.Request{URL: versionFile}.WithTimeout(5).Bytes()
+		if err != nil {
+			log.Warnf("protocol version file download %v error: %v.", versionFile, err)
+			return
+		}
+		_ = cli.Device().Protocol.Version().UpdateFromJson(b)
+		log.Infof("使用远程协议版本 %v: %v.", versionFile, cli.Device().Protocol.Version())
+		return
+	}
+	if len(versionFile) == 0 { // 未配置
+		versionFile = global.VersionsPath
+	}
+	vf := path.Join(versionFile, fmt.Sprint(int(cli.Device().Protocol))+".json")
+	if global.PathExists(vf) {
+		b, err := os.ReadFile(vf)
+		if err == nil {
+			_ = cli.Device().Protocol.Version().UpdateFromJson(b)
+		}
+		log.Infof("从文件 %s 读取协议版本 %v.", vf, cli.Device().Protocol.Version())
+	}
+	return
 }
