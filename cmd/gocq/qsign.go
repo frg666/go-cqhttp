@@ -455,7 +455,7 @@ func signStartRefreshToken(interval int64) {
 		log.Warn("定时刷新 token 已关闭")
 		return
 	}
-	log.Infof("每 %v 分钟将刷新一次签名 token", interval)
+	log.Debugf("每 %v 分钟将刷新一次签名 token", interval)
 	if interval < 10 {
 		log.Warnf("间隔时间 %v 分钟较短，推荐 30~40 分钟", interval)
 	}
