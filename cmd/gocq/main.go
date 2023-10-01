@@ -166,6 +166,7 @@ func LoginInteract() {
 	switch {
 	case base.QSign.Enable:
 		log.Info("使用 qsign 签名服务器")
+		initQsignConfig()
 		signServer, err := getAvaliableSignServer() // 获取可用签名服务器
 		if err != nil {
 			log.Warn(err)

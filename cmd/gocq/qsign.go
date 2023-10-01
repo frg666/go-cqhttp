@@ -69,6 +69,24 @@ func (ec *errcount) toZero() {
 	(*atomic.Uintptr)(ec).Store(0)
 }
 
+// 去除重复或者非法url
+func initQsignConfig() {
+	if len(base.QSign.SignServers) <= 1 {
+		return
+	}
+	t := []config.SignServer{}
+	has := map[string]bool{}
+	for _, ss := range base.QSign.SignServers {
+		if has[ss.URL] || len(ss.URL) <= 4 { // 已存在或是不正确的url
+			log.Warnf("忽略无效或重复配置的url: %v", ss.URL)
+			continue
+		}
+		t = append(t, ss)
+		has[ss.URL] = true
+	}
+	base.QSign.SignServers = t
+}
+
 var errn errcount // 连续找不到可用签名服务计数
 var checkMutex sync.Mutex
 
