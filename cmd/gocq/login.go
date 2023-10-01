@@ -284,5 +284,4 @@ func loadProtocolVersion(versionFile string) {
 		}
 		log.Infof("从文件 %s 读取协议版本 %v.", vf, cli.Device().Protocol.Version())
 	}
-	return
 }
