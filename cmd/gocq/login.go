@@ -16,6 +16,7 @@ import (
 	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 	"gopkg.ilharper.com/x/isatty"
 
 	"github.com/Mrs4s/go-cqhttp/global"
@@ -269,7 +270,7 @@ func loadProtocolVersion(versionFile string) {
 			log.Warnf("protocol version file download %v error: %v.", versionFile, err)
 			return
 		}
-		_ = cli.Device().Protocol.Version().UpdateFromJson(b)
+		updateProtocolFromJson(b)
 		log.Infof("使用远程协议版本 %v: %v.", versionFile, cli.Device().Protocol.Version())
 		return
 	}
@@ -280,8 +281,15 @@ func loadProtocolVersion(versionFile string) {
 	if global.PathExists(vf) {
 		b, err := os.ReadFile(vf)
 		if err == nil {
-			_ = cli.Device().Protocol.Version().UpdateFromJson(b)
+			updateProtocolFromJson(b)
 		}
 		log.Infof("从文件 %s 读取协议版本 %v.", vf, cli.Device().Protocol.Version())
 	}
+}
+
+// 临时解决 qua 没更新的问题
+func updateProtocolFromJson(b []byte) {
+	_ = cli.Device().Protocol.Version().UpdateFromJson(b)
+	cli.Device().Protocol.Version().QUA = gjson.GetBytes(b, "qua").String()
+	log.Debugf("更新QUA为 %v", cli.Device().Protocol.Version().QUA)
 }

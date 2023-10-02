@@ -322,7 +322,7 @@ func LoginInteract() {
 					log.Infof("检测到协议更新: %s -> %s （当前使用协议 -> 远程最新协议）", currentVersionName, remoteVersionName)
 					log.Infof("如果登录时出现版本过低错误, 可尝试使用 -update-protocol 参数启动")
 				case !isTokenLogin:
-					_ = device.Protocol.Version().UpdateFromJson(remoteVersion)
+					updateProtocolFromJson(remoteVersion)
 					log.Infof("协议版本已更新: %s -> %s ， 使用远程最新协议", currentVersionName, remoteVersionName)
 				default:
 					log.Infof("检测到协议更新: %s -> %s", currentVersionName, remoteVersionName)
