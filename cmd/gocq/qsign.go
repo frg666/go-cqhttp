@@ -262,13 +262,15 @@ func energy(uin uint64, id string, _ string, salt []byte) ([]byte, error) {
 // 提交回调 buffer
 func signSubmit(uin string, cmd string, callbackID int64, buffer []byte, t string) {
 	buffStr := hex.EncodeToString(buffer)
-	tail := 32
-	endl := "..."
-	if len(buffStr) < tail {
-		tail = len(buffStr)
-		endl = "."
+	if base.Debug {
+		tail := 32
+		endl := "..."
+		if len(buffStr) < tail {
+			tail = len(buffStr)
+			endl = "."
+		}
+		log.Debugf("submit (%v): uin=%v, cmd=%v, callbackID=%v, buffer=%v%s", t, uin, cmd, callbackID, buffStr[:tail], endl)
 	}
-	log.Infof("submit (%v): uin=%v, cmd=%v, callbackID=%v, buffer=%v%s", t, uin, cmd, callbackID, buffStr[:tail], endl)
 
 	signServer, _, err := requestSignServer(
 		http.MethodGet,
@@ -361,6 +363,7 @@ func signRefreshToken(uin string) error {
 		return errors.New("code=" + code.String() + ", msg: " + msg.String())
 	}
 	go signCallback(uin, gjson.GetBytes(resp, "data").Array(), "request token")
+	log.Info("刷新 token 成功")
 	return nil
 }
 
@@ -408,10 +411,13 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 		}
 		break
 	}
-	if tokenString := hex.EncodeToString(token); lastToken != tokenString {
-		log.Infof("token 变动：%v -> %v", lastToken, tokenString)
-		lastToken = tokenString
+	if base.Debug {
+		if tokenString := hex.EncodeToString(token); lastToken != tokenString {
+			log.Debugf("token 变动：%v -> %v", lastToken, tokenString)
+			lastToken = tokenString
+		}
 	}
+
 	rule := base.QSign.RuleChangeSignServer
 	if (len(sign) == 0 && rule >= 1) || (len(token) == 0 && rule >= 2) {
 		usingServer.set(nil, false)
