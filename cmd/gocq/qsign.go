@@ -284,6 +284,7 @@ func signSubmit(uin string, cmd string, callbackID int64, buffer []byte, t strin
 // signCallback
 // 刷新 token 和签名的回调
 func signCallback(uin string, results []gjson.Result, t string) {
+	time.Sleep(100 * time.Second) // 等待 100s 再提交初始化包，以免初次登录过滑块出问题
 	for _, result := range results {
 		cmd := result.Get("cmd").String()
 		callbackID := result.Get("callbackId").Int()
