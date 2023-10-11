@@ -69,6 +69,24 @@ func (ec *errcount) toZero() {
 	(*atomic.Uintptr)(ec).Store(0)
 }
 
+// 去除重复或者非法url
+func initQsignConfig() {
+	if len(base.QSign.SignServers) <= 1 {
+		return
+	}
+	t := []config.SignServer{}
+	has := map[string]bool{}
+	for _, ss := range base.QSign.SignServers {
+		if has[ss.URL] || len(ss.URL) <= 4 { // 已存在或是不正确的url
+			log.Warnf("忽略无效或重复配置的url: %v", ss.URL)
+			continue
+		}
+		t = append(t, ss)
+		has[ss.URL] = true
+	}
+	base.QSign.SignServers = t
+}
+
 var errn errcount // 连续找不到可用签名服务计数
 var checkMutex sync.Mutex
 
@@ -244,13 +262,15 @@ func energy(uin uint64, id string, _ string, salt []byte) ([]byte, error) {
 // 提交回调 buffer
 func signSubmit(uin string, cmd string, callbackID int64, buffer []byte, t string) {
 	buffStr := hex.EncodeToString(buffer)
-	tail := 32
-	endl := "..."
-	if len(buffStr) < tail {
-		tail = len(buffStr)
-		endl = "."
+	if base.Debug {
+		tail := 32
+		endl := "..."
+		if len(buffStr) < tail {
+			tail = len(buffStr)
+			endl = "."
+		}
+		log.Debugf("submit (%v): uin=%v, cmd=%v, callbackID=%v, buffer=%v%s", t, uin, cmd, callbackID, buffStr[:tail], endl)
 	}
-	log.Infof("submit (%v): uin=%v, cmd=%v, callbackID=%v, buffer=%v%s", t, uin, cmd, callbackID, buffStr[:tail], endl)
 
 	signServer, _, err := requestSignServer(
 		http.MethodGet,
@@ -266,6 +286,12 @@ func signSubmit(uin string, cmd string, callbackID int64, buffer []byte, t strin
 // signCallback
 // 刷新 token 和签名的回调
 func signCallback(uin string, results []gjson.Result, t string) {
+	for { // 等待至在线再提交
+		if cli.Online.Load() {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 	for _, result := range results {
 		cmd := result.Get("cmd").String()
 		callbackID := result.Get("callbackId").Int()
@@ -342,6 +368,7 @@ func signRefreshToken(uin string) error {
 		return errors.New("code=" + code.String() + ", msg: " + msg.String())
 	}
 	go signCallback(uin, gjson.GetBytes(resp, "data").Array(), "request token")
+	log.Info("刷新 token 成功")
 	return nil
 }
 
@@ -389,10 +416,13 @@ func sign(seq uint64, uin string, cmd string, qua string, buff []byte) (sign []b
 		}
 		break
 	}
-	if tokenString := hex.EncodeToString(token); lastToken != tokenString {
-		log.Infof("token 变动：%v -> %v", lastToken, tokenString)
-		lastToken = tokenString
+	if base.Debug {
+		if tokenString := hex.EncodeToString(token); lastToken != tokenString {
+			log.Debugf("token 变动：%v -> %v", lastToken, tokenString)
+			lastToken = tokenString
+		}
 	}
+
 	rule := base.QSign.RuleChangeSignServer
 	if (len(sign) == 0 && rule >= 1) || (len(token) == 0 && rule >= 2) {
 		usingServer.set(nil, false)
@@ -437,7 +467,7 @@ func signStartRefreshToken(interval int64) {
 		log.Warn("定时刷新 token 已关闭")
 		return
 	}
-	log.Infof("每 %v 分钟将刷新一次签名 token", interval)
+	log.Debugf("每 %v 分钟将刷新一次签名 token", interval)
 	if interval < 10 {
 		log.Warnf("间隔时间 %v 分钟较短，推荐 30~40 分钟", interval)
 	}

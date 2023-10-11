@@ -164,8 +164,9 @@ func LoginInteract() {
 		}
 	}
 	switch {
-	case base.QSign.Enable:
+	case base.QSign != nil && base.QSign.Enable:
 		log.Info("使用 qsign 签名服务器")
+		initQsignConfig()
 		signServer, err := getAvaliableSignServer() // 获取可用签名服务器
 		if err != nil {
 			log.Warn(err)
@@ -187,7 +188,7 @@ func LoginInteract() {
 		} else {
 			log.Warn("未配置有效 qsign 签名服务器")
 		}
-	case base.SignFaker.Enable:
+	case base.SignFaker != nil && base.SignFaker.Enable:
 		log.Info("使用 SignFaker 签名服务器")
 		if len(base.SignFaker.URL) > 1 {
 			wrapper.DandelionEnergy = energySignFaker
@@ -265,15 +266,8 @@ func LoginInteract() {
 		os.Exit(0)
 	}
 
-	// 加载本地版本信息, 一般是在上次登录时保存的
-	versionFile := path.Join(global.VersionsPath, fmt.Sprint(int(cli.Device().Protocol))+".json")
-	if global.PathExists(versionFile) {
-		b, err := os.ReadFile(versionFile)
-		if err == nil {
-			_ = cli.Device().Protocol.Version().UpdateFromJson(b)
-		}
-		log.Infof("从文件 %s 读取协议版本 %v.", versionFile, cli.Device().Protocol.Version())
-	}
+	// 加载协议版本信息
+	loadProtocolVersion(base.Account.ProtocolVersion)
 
 	saveToken := func() {
 		base.AccountToken = cli.GenToken()
@@ -325,11 +319,11 @@ func LoginInteract() {
 			if remoteVersionName != currentVersionName {
 				switch {
 				case !base.UpdateProtocol:
-					log.Infof("检测到协议更新: %s -> %s", currentVersionName, remoteVersionName)
+					log.Infof("检测到协议更新: %s -> %s （当前使用协议 -> 远程最新协议）", currentVersionName, remoteVersionName)
 					log.Infof("如果登录时出现版本过低错误, 可尝试使用 -update-protocol 参数启动")
 				case !isTokenLogin:
-					_ = device.Protocol.Version().UpdateFromJson(remoteVersion)
-					log.Infof("协议版本已更新: %s -> %s", currentVersionName, remoteVersionName)
+					updateProtocolFromJSON(remoteVersion)
+					log.Infof("协议版本已更新: %s -> %s ， 使用远程最新协议", currentVersionName, remoteVersionName)
 				default:
 					log.Infof("检测到协议更新: %s -> %s", currentVersionName, remoteVersionName)
 					log.Infof("由于使用了会话缓存, 无法自动更新协议, 请删除缓存后重试")

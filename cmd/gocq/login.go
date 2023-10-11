@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/tidwall/gjson"
 	"gopkg.ilharper.com/x/isatty"
 
 	"github.com/Mrs4s/go-cqhttp/global"
@@ -259,4 +261,35 @@ func fetchCaptcha(id string) string {
 		return g.Get("ticket").String()
 	}
 	return ""
+}
+
+func loadProtocolVersion(versionFile string) {
+	if strings.HasPrefix(versionFile, "http") {
+		b, err := download.Request{URL: versionFile}.WithTimeout(5).Bytes()
+		if err != nil {
+			log.Warnf("protocol version file download %v error: %v.", versionFile, err)
+			return
+		}
+		updateProtocolFromJSON(b)
+		log.Infof("使用远程协议版本 %v: %v.", versionFile, cli.Device().Protocol.Version())
+		return
+	}
+	if len(versionFile) == 0 { // 未配置
+		versionFile = global.VersionsPath
+	}
+	vf := path.Join(versionFile, fmt.Sprint(int(cli.Device().Protocol))+".json")
+	if global.PathExists(vf) {
+		b, err := os.ReadFile(vf)
+		if err == nil {
+			updateProtocolFromJSON(b)
+		}
+		log.Infof("从文件 %s 读取协议版本 %v.", vf, cli.Device().Protocol.Version())
+	}
+}
+
+// 临时解决 qua 没更新的问题
+func updateProtocolFromJSON(b []byte) {
+	_ = cli.Device().Protocol.Version().UpdateFromJson(b)
+	cli.Device().Protocol.Version().QUA = gjson.GetBytes(b, "qua").String()
+	log.Debugf("更新QUA为 %v", cli.Device().Protocol.Version().QUA)
 }
