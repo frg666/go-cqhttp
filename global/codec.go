@@ -42,7 +42,7 @@ func EncodeMP4(src string, dst string) error { //        -y 覆盖文件
 		if errors.Is(cmd2.Err, exec.ErrDot) {
 			cmd2.Err = nil
 		}
-		return errors.Wrap(cmd2.Run(), "convert mp4 failed")
+		return cmd2.Err = nil
 	}
 	return err
 }
