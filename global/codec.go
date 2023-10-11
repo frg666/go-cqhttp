@@ -30,34 +30,21 @@ func EncoderSilk(data []byte) ([]byte, error) {
 	return slk, nil
 }
 
-// EncodeMP4 将给定视频文件编码为MP4
-func EncodeMP4(src string, dst string) error { //        -y 覆盖文件
-	cmd1 := exec.Command("ffmpeg", "-i", src, "-y", "-c", "copy", "-map", "0", dst)
-	if errors.Is(cmd1.Err, exec.ErrDot) {
-		cmd1.Err = nil
-	}
-	err := cmd1.Run()
-	if err != nil {
-		cmd2 := exec.Command("ffmpeg", "-i", src, "-y", "-c:v", "h264", "-c:a", "mp3", dst)
-		if errors.Is(cmd2.Err, exec.ErrDot) {
-			cmd2.Err = nil
+func EncodeMP4(src, dst string) error {
+	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-c:v", "h264", "-c:a", "mp3", dst)
+	if err := cmd.Run(); err != nil {
+		cmd = exec.Command("ffmpeg", "-i", src, "-y", "-c", "copy", "-map", "0", dst)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to encode MP4: %v", err)
 		}
-		return nil
 	}
-	return err
+	return nil
 }
 
-// ExtractCover 获取给定视频文件的Cover
-func ExtractCover(src string, target string) error {
+func ExtractCover(src, target string) error {
 	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-ss", "0", "-frames:v", "1", target)
-	if errors.Is(cmd.Err, exec.ErrDot) {
-		cmd.Err = nil
-	}
-	err := cmd.Run()
-	if err != nil {
-		// 如果命令执行失败，打印错误信息，并返回 nil
-		fmt.Printf("extract video cover failed: %v", err)
-		return nil
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to extract video cover: %v", err)
 	}
 	return nil
 }
