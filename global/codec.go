@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
-
+        "fmt"
 	"github.com/pkg/errors"
 
 	"github.com/Mrs4s/go-cqhttp/internal/base"
@@ -55,8 +55,9 @@ func ExtractCover(src string, target string) error {
 	}
 	err := cmd.Run()
 	if err != nil {
-		// 如果命令执行失败，不返回错误，而是打印错误信息
+		// 如果命令执行失败，打印错误信息，并返回 nil
 		fmt.Printf("extract video cover failed: %v", err)
+		return nil
 	}
 	return nil
 }
