@@ -53,5 +53,10 @@ func ExtractCover(src string, target string) error {
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	}
-	return errors.Wrap(cmd.Run(), "extract video cover failed")
+	err := cmd.Run()
+	if err != nil {
+		// 如果命令执行失败，不返回错误，而是打印错误信息
+		fmt.Printf("extract video cover failed: %v", err)
+	}
+	return nil
 }
