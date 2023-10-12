@@ -41,10 +41,29 @@ func EncodeMP4(src, dst string) error {
 	return nil
 }
 
-func ExtractCover(src, target string) error {
-	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-ss", "0", target)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to extract video cover: %v", err)
-	}
-	return nil
+func ExtractCover(src string, target string) error {
+    pipelineStr := "filesrc location=" + src + " ! decodebin ! videoconvert ! jpegenc ! filesink location=" + target
+
+    pipeline, err := gst.ParseLaunch(pipelineStr)
+    if err != nil {
+        return err
+    }
+
+    defer pipeline.SetState(gst.StateNull())
+
+    bus := pipeline.GetBus()
+    defer bus.Unref()
+
+    pipeline.SetState(gst.StatePlaying)
+
+    for {
+        message := bus.TimedPopFiltered(gst.CLOCK_TIME_NONE, gst.MessageTypeError|gst.MessageTypeEos)
+        switch message.GetType() {
+        case gst.MessageTypeError:
+            err := message.ParseError()
+            return fmt.Errorf("GStreamer error: %s", err.Message())
+        case gst.MessageTypeEos:
+            return nil
+        }
+    }
 }
