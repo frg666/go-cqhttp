@@ -42,7 +42,7 @@ func EncodeMP4(src, dst string) error {
 }
 
 func ExtractCover(src, target string) error {
-	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-ss", "0", "-frames:v", "1", target)
+	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-ss", "0", target)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to extract video cover: %v", err)
 	}
