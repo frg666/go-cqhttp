@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path"
-        "fmt"
+
 	"github.com/pkg/errors"
-        "github.com/notedit/gstreamer-go"
+
 	"github.com/Mrs4s/go-cqhttp/internal/base"
 )
 
@@ -30,40 +30,32 @@ func EncoderSilk(data []byte) ([]byte, error) {
 	return slk, nil
 }
 
-func EncodeMP4(src, dst string) error {
-	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-c:v", "h264", "-c:a", "mp3", dst)
-	if err := cmd.Run(); err != nil {
-		cmd = exec.Command("ffmpeg", "-i", src, "-y", "-c", "copy", "-map", "0", dst)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to encode MP4: %v", err)
-		}
+// EncodeMP4 将给定视频文件编码为MP4
+func EncodeMP4(src string, dst string) error { //        -y 覆盖文件
+	cmd1 := exec.Command("ffmpeg", "-i", src, "-y", "-c", "copy", "-map", "0", dst)
+	if errors.Is(cmd1.Err, exec.ErrDot) {
+		cmd1.Err = nil
 	}
-	return nil
+	err := cmd1.Run()
+	if err != nil {
+		cmd2 := exec.Command("ffmpeg", "-i", src, "-y", "-c:v", "h264", "-c:a", "mp3", dst)
+		if errors.Is(cmd2.Err, exec.ErrDot) {
+			cmd2.Err = nil
+		}
+		return errors.Wrap(cmd2.Run(), "convert mp4 failed")
+	}
+	return err
 }
 
+// ExtractCover 获取给定视频文件的Cover
+
 func ExtractCover(src string, target string) error {
-    pipelineStr := "filesrc location=" + src + " ! decodebin ! videoconvert ! jpegenc ! filesink location=" + target
-
-    pipeline, err := gst.ParseLaunch(pipelineStr)
-    if err != nil {
-        return err
-    }
-
-    defer pipeline.SetState(gst.StateNull())
-
-    bus := pipeline.GetBus()
-    defer bus.Unref()
-
-    pipeline.SetState(gst.StatePlaying)
-
-    for {
-        message := bus.TimedPopFiltered(gst.CLOCK_TIME_NONE, gst.MessageTypeError|gst.MessageTypeEos)
-        switch message.GetType() {
-        case gst.MessageTypeError:
-            err := message.ParseError()
-            return fmt.Errorf("GStreamer error: %s", err.Message())
-        case gst.MessageTypeEos:
-            return nil
+    cmd := exec.Command("gst-launch-1.0", "filesrc", "location="+src, "!", "decodebin", "!", "videoconvert", "!", "jpegenc", "!", "filesink", "location="+target)
+    if err := cmd.Run(); err != nil {
+        // 忽略 *exec.ExitError 错误
+        if _, ok := err.(*exec.ExitError); !ok {
+            return errors.Wrap(err, "extract video cover failed")
         }
     }
+    return nil
 }
