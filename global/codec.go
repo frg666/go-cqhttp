@@ -8,7 +8,7 @@ import (
 	"path"
         "fmt"
 	"github.com/pkg/errors"
-
+        "github.com/notedit/gstreamer-go"
 	"github.com/Mrs4s/go-cqhttp/internal/base"
 )
 
