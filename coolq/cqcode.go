@@ -163,7 +163,7 @@ func toElements(e []message.IMessageElement, source message.Source) (r []msg.Ele
 				Data: pairs{
 					{K: "file", V: o.Name},
 					{K: "url", V: o.Url},
-					{K: " url", V: o. Url},
+					{K: " url", V: o.Url},
 				},
 			}
 		case *message.GroupImageElement:
