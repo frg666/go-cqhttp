@@ -41,7 +41,6 @@ jobs:
           export BINARY_NAME="$BINARY_PREFIX"$GOOS"_$GOARCH$BINARY_SUFFIX"
           export CGO_ENABLED=0
           export LD_FLAGS="-w -s -X github.com/Mrs4s/go-cqhttp/internal/base.Version=${COMMIT_ID::7}"
-          go mod download github.com/notedit/gstreamer-go
           go build -o "output/$BINARY_NAME" -trimpath -ldflags "$LD_FLAGS" .
       - name: Upload artifact
         uses: actions/upload-artifact@v3
