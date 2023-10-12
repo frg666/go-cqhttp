@@ -51,12 +51,9 @@ func EncodeMP4(src string, dst string) error {
 
 // ExtractCover 获取给定视频文件的Cover
 func ExtractCover(src string, target string) error {
-    cmd := exec.Command("gst-launch-1.0", "filesrc", "location="+src, "!", "decodebin", "!", "videoconvert", "!", "jpegenc", "!", "filesink", "location="+target)
-    if err := cmd.Run(); err != nil {
-        // 忽略 *exec.ExitError 错误
-        if _, ok := err.(*exec.ExitError); !ok {
-            return errors.Wrap(err, "extract video cover failed")
-        }
-    }
-    return nil
+	cmd := exec.Command("ffmpeg", "-i", src, "-y", "-ss", "0", "-frames:v", "1", target)
+	if errors.Is(cmd.Err, exec.ErrDot) {
+		cmd.Err = nil
+	}
+	return nil
 }
